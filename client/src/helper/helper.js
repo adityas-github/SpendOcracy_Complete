@@ -1,10 +1,13 @@
 import _ from "lodash";
 
+// Calculate the sum of amounts grouped by type
 export function getSum(transaction, type) {
   let sum = _(transaction)
     .groupBy("type")
     .map((objs, key) => {
-      if (!type) return _.sumBy(objs, "amount"); // [300, 350, 500]
+      if (!type) {
+        return _.sumBy(objs, "amount"); // Total sum of all transactions if no type is specified
+      }
       return {
         type: key,
         color: objs[0].color,
@@ -12,33 +15,38 @@ export function getSum(transaction, type) {
       };
     })
     .value();
+
   return sum;
 }
 
+// Calculate labels with percentage for each type
 export function getLabels(transaction) {
   let amountSum = getSum(transaction, "type");
-  let Total = _.sum(getSum(transaction));
+  let total = _.sum(amountSum.map((obj) => obj.total)); // Total sum of all types
 
   let percent = _(amountSum)
-    .map((objs) => _.assign(objs, { percent: (100 * objs.total) / Total }))
+    .map((objs) => ({
+      ...objs,
+      percent: (100 * objs.total) / total,
+    }))
     .value();
 
   return percent;
 }
 
+// Prepare chart configuration data
 export function chart_Data(transaction, custom) {
   let bg = _.map(transaction, (a) => a.color);
-  bg = _.uniq(bg);
-  console.log(bg);
+  bg = _.uniq(bg); // Ensure unique colors for the chart
 
-  let dataValue = getSum(transaction);
+  let dataValue = getSum(transaction, "type"); // Get sum by type
 
   const config = {
     data: {
       datasets: [
         {
-          data: dataValue,
-          backgroundColor: bg,
+          data: dataValue.map((item) => item.total), // Data values for chart
+          backgroundColor: bg, // Background colors
           hoverOffset: 4,
           borderRadius: 30,
           spacing: 10,
@@ -46,13 +54,14 @@ export function chart_Data(transaction, custom) {
       ],
     },
     options: {
-      cutout: 115,
+      cutout: 115, // Adjust cutout size for chart
     },
   };
 
-  return custom ?? config;
+  return custom ?? config; // Return custom config if provided
 }
 
+// Calculate total sum of amounts
 export function getTotal(transaction) {
-  return _.sum(getSum(transaction));
+  return _.sum(getSum(transaction, "type").map((obj) => obj.total)); // Total sum of all types
 }
